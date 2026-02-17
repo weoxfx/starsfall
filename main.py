@@ -4,6 +4,7 @@ import asyncio
 import requests
 from aiogram.filters import Command
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     InlineKeyboardMarkup,
@@ -24,6 +25,17 @@ ADMIN_ID = 6186511950
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 app = FastAPI()
+
+# ==============================
+# CORS — allows browser requests
+# ==============================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Headers required by Supabase edge functions
 def get_supabase_headers():
