@@ -17,6 +17,9 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
+# Your Supabase Edge Function URL — set this in your .env file
+# Format: https://<your-project-ref>.supabase.co/functions/v1/payment-success
+PAYMENT_WEBHOOK_URL = os.getenv("PAYMENT_WEBHOOK_URL")
 ADMIN_ID = 6186511950
 
 bot = Bot(BOT_TOKEN)
@@ -46,7 +49,7 @@ async def start_cmd(message: types.Message):
 
 
 # ==============================
-# CREATE INVOICE API (Lovable calls)
+# CREATE INVOICE API (Lovable calls this)
 # ==============================
 @app.post("/create-stars-invoice")
 async def create_invoice(request: Request):
@@ -69,14 +72,14 @@ async def create_invoice(request: Request):
         payload=payload,
         currency="XTR",
         prices=prices,
-        provider_token="",  # IMPORTANT FOR STARS
+        provider_token="",  # Required empty for Stars
     )
 
     return {"status": "invoice_sent"}
 
 
 # ==============================
-# PRE CHECKOUT (REQUIRED)
+# PRE CHECKOUT (REQUIRED by Telegram)
 # ==============================
 @dp.pre_checkout_query()
 async def pre_checkout(pre_checkout_q: types.PreCheckoutQuery):
@@ -93,10 +96,11 @@ async def successful_payment(message: types.Message):
     stars_paid = payment.total_amount
     payload = payment.invoice_payload
 
-    # 🔔 notify your backend / lovable
+    # Notify Supabase Edge Function to credit stars
+    webhook_url = PAYMENT_WEBHOOK_URL or f"{WEBAPP_URL}/payment-success"
     try:
-        requests.post(
-            f"{WEBAPP_URL}/payment-success",
+        r = requests.post(  # ← fixed: was missing `r =`
+            webhook_url,
             json={
                 "user_id": user_id,
                 "stars": stars_paid,
@@ -104,24 +108,28 @@ async def successful_payment(message: types.Message):
             },
             timeout=10,
         )
-        print("Webhook status:", r.status_code)
+        print(f"Webhook status: {r.status_code} | Response: {r.text}")
     except Exception as e:
-        print("Webhook error:", e)
+        print(f"Webhook error: {e}")
 
-    await message.answer("✅ Payment successful! Stars added.")
+    await message.answer("✅ Payment successful! Stars added to your balance.")
 
+
+# ==============================
+# ADMIN: Test the payment webhook
+# ==============================
 @dp.message(Command("testapi"))
 async def test_api_cmd(message: types.Message):
-    # 🔒 Admin check
     if message.from_user.id != ADMIN_ID:
         await message.answer("❌ You are not authorized.")
         return
 
-    await message.answer("🧪 Testing Lovable API...")
+    await message.answer("🧪 Testing payment webhook...")
 
+    webhook_url = PAYMENT_WEBHOOK_URL or f"{WEBAPP_URL}/payment-success"
     try:
         r = requests.post(
-            f"{WEBAPP_URL}/payment-success",
+            webhook_url,
             json={
                 "user_id": message.from_user.id,
                 "stars": 10,
@@ -130,16 +138,13 @@ async def test_api_cmd(message: types.Message):
             },
             timeout=10,
         )
-
         await message.answer(
-            f"✅ API Response: {r.status_code}"
+            f"✅ Webhook Response: {r.status_code}\n{r.text}"
         )
-
     except Exception as e:
-        await message.answer(
-            f"❌ API Failed:\n{e}"
-        )
-        
+        await message.answer(f"❌ Webhook Failed:\n{e}")
+
+
 # ==============================
 # RUN BOT IN BACKGROUND
 # ==============================
