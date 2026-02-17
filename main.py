@@ -2,7 +2,7 @@ import os
 import uuid
 import asyncio
 import requests
-
+from aiogram.filters import Command
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
@@ -26,7 +26,7 @@ app = FastAPI()
 # ==============================
 # /start command
 # ==============================
-@dp.message(commands=["start"])
+@dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -110,7 +110,7 @@ async def successful_payment(message: types.Message):
 
     await message.answer("✅ Payment successful! Stars added.")
 
-@dp.message(commands=["testapi"])
+@dp.message(Command("testapi"))
 async def test_api_cmd(message: types.Message):
     # 🔒 Admin check
     if message.from_user.id != ADMIN_ID:
