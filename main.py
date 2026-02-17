@@ -17,14 +17,21 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
-# Your Supabase Edge Function URL — set this in your .env file
-# Format: https://<your-project-ref>.supabase.co/functions/v1/payment-success
 PAYMENT_WEBHOOK_URL = os.getenv("PAYMENT_WEBHOOK_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 ADMIN_ID = 6186511950
 
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 app = FastAPI()
+
+# Headers required by Supabase edge functions
+def get_supabase_headers():
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "apikey": SUPABASE_ANON_KEY,
+    }
 
 # ==============================
 # /start command
@@ -41,7 +48,6 @@ async def start_cmd(message: types.Message):
             ]
         ]
     )
-
     await message.answer(
         "✨ Welcome to StarsFall!\n\nPlay and unlock premium rewards ⭐",
         reply_markup=kb,
@@ -62,7 +68,6 @@ async def create_invoice(request: Request):
         return {"status": "error", "message": "Missing data"}
 
     payload = f"stars_{uuid.uuid4()}"
-
     prices = [LabeledPrice(label="Stars Pack", amount=int(stars))]
 
     await bot.send_invoice(
@@ -72,7 +77,7 @@ async def create_invoice(request: Request):
         payload=payload,
         currency="XTR",
         prices=prices,
-        provider_token="",  # Required empty for Stars
+        provider_token="",
     )
 
     return {"status": "invoice_sent"}
@@ -96,16 +101,16 @@ async def successful_payment(message: types.Message):
     stars_paid = payment.total_amount
     payload = payment.invoice_payload
 
-    # Notify Supabase Edge Function to credit stars
     webhook_url = PAYMENT_WEBHOOK_URL or f"{WEBAPP_URL}/payment-success"
     try:
-        r = requests.post(  # ← fixed: was missing `r =`
+        r = requests.post(
             webhook_url,
             json={
                 "user_id": user_id,
                 "stars": stars_paid,
                 "payload": payload,
             },
+            headers=get_supabase_headers(),
             timeout=10,
         )
         print(f"Webhook status: {r.status_code} | Response: {r.text}")
@@ -136,6 +141,7 @@ async def test_api_cmd(message: types.Message):
                 "payload": "TEST_PAYLOAD",
                 "test": True,
             },
+            headers=get_supabase_headers(),
             timeout=10,
         )
         await message.answer(
