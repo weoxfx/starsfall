@@ -103,6 +103,7 @@ async def successful_payment(message: types.Message):
             },
             timeout=10,
         )
+        print("Webhook status:", r.status_code)
     except Exception as e:
         print("Webhook error:", e)
 
