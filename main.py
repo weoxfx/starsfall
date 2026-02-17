@@ -17,6 +17,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "6186511950"))
 
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
@@ -109,7 +110,36 @@ async def successful_payment(message: types.Message):
 
     await message.answer("✅ Payment successful! Stars added.")
 
+@dp.message(commands=["testapi"])
+async def test_api_cmd(message: types.Message):
+    # 🔒 Admin check
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ You are not authorized.")
+        return
 
+    await message.answer("🧪 Testing Lovable API...")
+
+    try:
+        r = requests.post(
+            f"{WEBAPP_URL}/payment-success",
+            json={
+                "user_id": message.from_user.id,
+                "stars": 10,
+                "payload": "TEST_PAYLOAD",
+                "test": True,
+            },
+            timeout=10,
+        )
+
+        await message.answer(
+            f"✅ API Response: {r.status_code}"
+        )
+
+    except Exception as e:
+        await message.answer(
+            f"❌ API Failed:\n{e}"
+        )
+        
 # ==============================
 # RUN BOT IN BACKGROUND
 # ==============================
