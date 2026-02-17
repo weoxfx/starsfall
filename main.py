@@ -67,7 +67,36 @@ async def start_cmd(message: types.Message):
 
 
 # ==============================
-# CREATE INVOICE API (Lovable calls this)
+# CREATE INVOICE LINK (returns link for in-app popup)
+# ==============================
+@app.post("/create-invoice-link")
+async def create_invoice_link(request: Request):
+    data = await request.json()
+
+    user_id = data.get("user_id")
+    stars = data.get("stars")
+
+    if not user_id or not stars:
+        return {"status": "error", "message": "Missing data"}
+
+    payload = f"stars_{uuid.uuid4()}"
+    prices = [LabeledPrice(label="Stars Pack", amount=int(stars))]
+
+    # Creates a link instead of sending a message
+    link = await bot.create_invoice_link(
+        title="⭐ Stars Purchase",
+        description=f"Buy {stars} Stars for StarsFall",
+        payload=payload,
+        currency="XTR",
+        prices=prices,
+        provider_token="",
+    )
+
+    return {"status": "ok", "link": link}
+
+
+# ==============================
+# CREATE INVOICE API (fallback — sends message)
 # ==============================
 @app.post("/create-stars-invoice")
 async def create_invoice(request: Request):
