@@ -17,7 +17,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "6186511950"))
+ADMIN_ID = 6186511950
 
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
